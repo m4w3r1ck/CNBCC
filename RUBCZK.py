@@ -121,7 +121,8 @@ class ChartMaker(object):
         (ax1, ax2,ax3) = self.ax
         [e.hold(True) for e in self.ax]
         [e.grid(True) for e in self.ax]
-        ax1.set_title(mena+" CZK %s %s"%(list(data["Datum"])[-1], list(data[mena])[-1]))
+        p = round(100-y.values[-2]/y.values[-1]*100,2)
+        ax1.set_title(mena+" CZK %s %s"%(list(data["Datum"])[-1], list(data[mena])[-1])+" %.2f%%"%p)
         ax1.plot_date(x,y,'k-')
         ax1.plot(x,pandas.ewma(y,12),'r-')
         ax1.plot(x,pandas.ewma(y,26),'g-')
