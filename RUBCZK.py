@@ -131,7 +131,8 @@ class ChartMaker(object):
         ax1.callbacks.connect('DrawEvent', self)        
         
         #ax2.subplot(4,1,3, sharex=True) # MACD
-        ax2.set_title(indicator[len(x)-1])
+        p = round(100-indicator[-2]/indicator[-1]*100,2)
+        ax2.set_title("%.4f, %.2f%%"%(indicator[len(x)-1], p))
         ax2.plot(x,macd)
         ax2.plot(x,signal)
         ax2.fill_between(x, indicator, 0, indicator>0, color='green',alpha=0.2,interpolate=True)
@@ -140,6 +141,7 @@ class ChartMaker(object):
         ax2.plot(x,[0]*len(x),color='black',alpha=0.6)
         
         #plt.subplot(4,1,4, shar) #RSI
+        ax3.set_title("%.2f"%rsi[-1])
         ax3.plot(x,[70]*len(x),color='black',alpha=0.6)
         ax3.plot(x,[30]*len(x),color='black',alpha=0.6)
         ax3.plot(x,[50]*len(x),color='black',alpha=0.3)
