@@ -4,7 +4,7 @@ import pandas
 import matplotlib.pyplot as plt
 import numpy as np
 import datetime
-
+import os
 
 #%%
 
@@ -17,8 +17,8 @@ def relative_strength(prices, n=14):
 
     deltas = np.diff(prices)
     seed = deltas[:n+1]
-    up = seed[seed>=0].sum()/n
-    down = -seed[seed<0].sum()/n
+    up = seed[seed >= 0].sum() / n
+    down = -seed[seed < 0].sum() / n
     rs = up/down
     rsi = np.zeros_like(prices)
     rsi[:n] = 100. - 100./(1.+rs)
@@ -26,7 +26,7 @@ def relative_strength(prices, n=14):
     for i in range(n, len(prices)):
         delta = deltas[i-1] # cause the diff is 1 shorter
 
-        if delta>0:
+        if delta > 0:
             upval = delta
             downval = 0.
         else:
@@ -44,8 +44,8 @@ def relative_strength(prices, n=14):
 def t2d(x):
     "Prevede datum z txt na datetime"
     d = [int(e) for e in x.split(".")]
-    return datetime.datetime(d[2],d[1], d[0])
-    
+    return datetime.datetime(d[2], d[1], d[0])
+
 class UpdateLim(object):
     def __init__(self, h=500, w=500, niter=50, radius=2., power=2):
         self.height = h
@@ -53,23 +53,35 @@ class UpdateLim(object):
         self.niter = niter
         self.radius = radius
         self.power = power
-        
+
     def __call__(self, ax):
         print "Update"
         #ax2.ylim()
         print ax
         ax.figure.canvas.draw_idle()
-        
-nearest = lambda mlist, num: min(mlist, key=lambda x:abs(x-num))
+
+nearest = lambda mlist, num: min(mlist, key=lambda x: abs(x-num))
 
 #%%
 print "Reading data"
+if not os.path.isfile("DATA.xls"):
+    print "creating new local DB"
+    try:
+         d = pandas.read_csv(  "http://www.cnb.cz/cs/financni_trhy/devizovy_trh/kurzy_devizoveho_trhu/rok.txt?rok=2015" , sep="|", decimal=",", parse_dates=True)
+ 
+         d.to_excel("DATA.xls","RAW")
+    except Exception, msg:
+         print msg
+         pass
+
 data = pandas.read_excel("DATA.xls")
+
 today = datetime.date.today()# .strftime("%d.%m.%Y")
 ld = t2d(data["Datum"].iloc[-1]).date()
 td = ld-today
+
 #==============================================================================
-if (ld != today and today.isocalendar()[2]<6) or (td < datetime.timedelta(-3) and today.isocalendar()[2]>5):
+if (ld != today and today.isocalendar()[2] < 6) or (td < datetime.timedelta(-3) and today.isocalendar()[2] > 5):
      print "Updating data..."
      try:
          d = pandas.read_csv(  "http://www.cnb.cz/cs/financni_trhy/devizovy_trh/kurzy_devizoveho_trhu/rok.txt?rok=2016" , sep="|", decimal=",", parse_dates=True)
@@ -150,7 +162,7 @@ class ChartMaker(object):
         ax3.plot(x,rsi)
         
         self.fig.autofmt_xdate()
-        #self.fig.tight_layout()
+        self.fig.tight_layout()
 
 
 if __name__ == "__main__":
