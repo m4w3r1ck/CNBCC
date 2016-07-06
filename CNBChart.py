@@ -1,12 +1,24 @@
 print "Initiating..."
 
 import pandas
+import matplotlib
+matplotlib.use('Qt4Agg') # overrule configuration
+matplotlib.rc('font', family='Arial')
 import matplotlib.pyplot as plt
 import numpy as np
 import datetime
 import os
 
 #%%
+
+def fetch_data(year = "2016"):
+    "Fetches data from CNB server for the given year"
+    try:
+        return pandas.read_csv(  "http://www.cnb.cz/cs/financni_trhy/devizovy_trh/kurzy_devizoveho_trhu/rok.txt?rok="+year ,\
+          sep="|", decimal=",", parse_dates=True)
+    except Exception, msg:
+        print msg
+        return None
 
 def relative_strength(prices, n=14):
     """
@@ -66,13 +78,8 @@ nearest = lambda mlist, num: min(mlist, key=lambda x: abs(x-num))
 print "Reading data"
 if not os.path.isfile("DATA.xls"):
     print "creating new local DB"
-    try:
-         d = pandas.read_csv(  "http://www.cnb.cz/cs/financni_trhy/devizovy_trh/kurzy_devizoveho_trhu/rok.txt?rok=2015" , sep="|", decimal=",", parse_dates=True)
- 
-         d.to_excel("DATA.xls","RAW")
-    except Exception, msg:
-         print msg
-         pass
+    d = fetch_data("2015")
+    d.to_excel("DATA.xls","RAW")
 
 data = pandas.read_excel("DATA.xls")
 
@@ -82,16 +89,11 @@ td = ld-today
 
 #==============================================================================
 if (ld != today and today.isocalendar()[2] < 6) or (td < datetime.timedelta(-3) and today.isocalendar()[2] > 5):
-     print "Updating data..."
-     try:
-         d = pandas.read_csv(  "http://www.cnb.cz/cs/financni_trhy/devizovy_trh/kurzy_devizoveho_trhu/rok.txt?rok=2016" , sep="|", decimal=",", parse_dates=True)
- 
-         data = data.append(d).drop_duplicates()
-         data.to_excel("DATA.xls","RAW")
-     except Exception, msg:
-         print msg
-         pass
- 
+    print "Updating data..."
+    d = fetch_data("2016")
+    data = data.append(d).drop_duplicates()
+    data.to_excel("DATA.xls","RAW")
+
 #==============================================================================
 #%%
 
@@ -100,26 +102,31 @@ print "Ploting..."
 class ChartMaker(object):
     def __init__(self,**args):
         self.fig, self.ax = plt.subplots(3, sharex=True)
-        
-    def __call__(self, ax): 
+
+    def __call__(self, ax):
         x,y = [int(round(e)) for e in ax.get_xlim()]
         l = self.ax[1].get_lines()[0]
         mx = list(l._x).index(nearest(l._x, x))
-        my = list(l._x).index(nearest(l._x, y))        
+        my = list(l._x).index(nearest(l._x, y))
         v = l._y[mx:my]
         self.ax[1].set_ylim(min(v)*1.1,max(v)*1.1)
 
     def get_fig(self):
-        return self.fig  
-        
+        return self.fig
+
     def get_currencies(self):
         a = [e[-3:] for e in data.keys()[:-1]]
         a.sort()
         return a
-                
+
     def draw(self, mena = "RUB"):
         print "Calculating data..."
-        mena = data.keys()[[mena in e for e in data.keys()].index(True)]
+        try:
+            mena = data.keys()[[mena in e for e in data.keys()].index(True)]
+        except ValueError:
+            print "Currency not in list"
+            print mena, data.keys()
+            raise SystemExit
         y = data[mena]
         #x = range(len(y))
         #x = pandas.to_datetime( data["Datum"] )
@@ -140,8 +147,8 @@ class ChartMaker(object):
         ax1.plot(x,pandas.ewma(y,26),'g-')
         ax1.plot(x,pandas.stats.moments.rolling_median(y,50) )
         ax1.callbacks.connect('xlim_changed', self) #DrawEvent
-        ax1.callbacks.connect('DrawEvent', self)        
-        
+        ax1.callbacks.connect('DrawEvent', self)
+
         #ax2.subplot(4,1,3, sharex=True) # MACD
         p = round(100-indicator[-2]/indicator[-1]*100,2)
         ax2.set_title("%.4f, %.2f%%"%(indicator[len(x)-1], p))
@@ -151,7 +158,7 @@ class ChartMaker(object):
         ax2.fill_between(x, indicator, 0, indicator<0, color='red',alpha=0.2,interpolate=True)
         ax2.plot(x,indicator,color='black')
         ax2.plot(x,[0]*len(x),color='black',alpha=0.6)
-        
+
         #plt.subplot(4,1,4, shar) #RSI
         ax3.set_title("%.2f"%rsi[-1])
         ax3.plot(x,[70]*len(x),color='black',alpha=0.6)
@@ -160,10 +167,9 @@ class ChartMaker(object):
         ax3.fill_between(x, rsi, 70, rsi>70, color='red',alpha=0.2,interpolate=True)
         ax3.fill_between(x, rsi, 30, rsi<30, color='green',alpha=0.2,interpolate=True)
         ax3.plot(x,rsi)
-        
+
         self.fig.autofmt_xdate()
         self.fig.tight_layout()
-
 
 if __name__ == "__main__":
     cm = ChartMaker()
